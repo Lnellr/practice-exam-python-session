@@ -2,22 +2,23 @@ from models.user import User
 
 class UserController:
     def __init__(self, db_manager) -> None:
-        pass
+        self.db = db_manager
 
     def add_user(self, username, email, role) -> int:
-        pass
+        user = User(username, email, role)
+        return self.db.add_user(user)
 
     def get_user(self, user_id) -> User | None:
-        pass
+        return self.db.get_user_by_id(user_id)
 
     def get_all_users(self) -> list[User]:
-        pass
+        return self.db.get_all_users()
 
     def update_user(self, user_id, **kwargs) -> bool:
-        pass
+        return self.db.update_user(user_id, **kwargs)
 
     def delete_user(self, user_id) -> bool:
-        pass
+        return self.db.delete_user(user_id)
 
     def get_user_tasks(self, user_id) -> list:
-        pass
+        return self.db.get_tasks_by_user(user_id)

@@ -8,5 +8,10 @@ from views.loan_view import LoanView
 
 class MainWindow(tk.Tk):
     def __init__(self, book_controller, reader_controller, loan_controller) -> None:
-        pass
+        super().__init__()
+        self.title("Library Management System")
+        self.geometry("900x600")
+
+        notebook = ttk.Notebook(self)
+        notebook.pack(fill="both", expand=True)
 
