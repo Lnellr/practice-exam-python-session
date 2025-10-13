@@ -27,11 +27,25 @@ class TaskController:
         return self.db.update_task(task_id, status=new_status)
 
     def get_overdue_tasks(self) -> list[Task]:
-        now = datetime.now()
-        return [
-            t for t in self.db.get_all_tasks()
-            if t.due_date is not None and t.status != "completed" and t.due_date < now
-        ]
+        dtm = __import__("datetime")
+        now = dtm.datetime.now()
+
+        tasks = self.db.get_all_tasks()
+        result: list[Task] = []
+
+        for t in tasks:
+            due = getattr(t, "due_date", None)
+
+            if isinstance(due, str) and due:
+                try:
+                    due = dtm.datetime.fromisoformat(due)
+                except Exception:
+                    continue
+
+        if (due is not None) and (getattr(t, "status", None) != "completed") and (due < now):
+            result.append(t)
+        
+        return result
 
     def get_tasks_by_project(self, project_id) -> list[Task]:
         return self.db.get_tasks_by_project(project_id)
