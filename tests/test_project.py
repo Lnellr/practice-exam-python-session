@@ -1,3 +1,13 @@
+import os
+import tempfile
+from datetime import datetime, timedelta
+
+from database.database_manager import DatabaseManager
+from controllers.project_controller import ProjectController
+from controllers.task_controller import TaskController
+from models.user import User
+
+
 class TestProjectController:
     """Тесты для ProjectController"""
 
@@ -18,7 +28,7 @@ class TestProjectController:
             "Новый проект",
             "Описание нового проекта",
             datetime.now(),
-            datetime.now() + timedelta(days=30)
+            datetime.now() + timedelta(days=30),
         )
 
         assert project_id is not None
@@ -26,6 +36,7 @@ class TestProjectController:
 
         # Проверяем, что проект действительно добавлен
         project = self.controller.get_project(project_id)
+        assert project is not None
         assert project.name == "Новый проект"
         assert project.description == "Описание нового проекта"
         assert project.status == "active"
@@ -36,7 +47,7 @@ class TestProjectController:
             "Проект для получения",
             "Описание",
             datetime.now(),
-            datetime.now() + timedelta(days=30)
+            datetime.now() + timedelta(days=30),
         )
 
         project = self.controller.get_project(project_id)
@@ -47,10 +58,15 @@ class TestProjectController:
     def test_get_all_projects(self):
         """Тест получения всех проектов"""
         # Добавляем несколько проектов
-        self.controller.add_project("Проект 1", "Описание 1", datetime.now(), datetime.now() + timedelta(days=10))
-        self.controller.add_project("Проект 2", "Описание 2", datetime.now(), datetime.now() + timedelta(days=20))
+        self.controller.add_project(
+            "Проект 1", "Описание 1", datetime.now(), datetime.now() + timedelta(days=10)
+        )
+        self.controller.add_project(
+            "Проект 2", "Описание 2", datetime.now(), datetime.now() + timedelta(days=20)
+        )
 
         projects = self.controller.get_all_projects()
+        assert isinstance(projects, list)
         assert len(projects) >= 2
 
         # Проверяем, что все проекты имеют необходимые атрибуты
@@ -65,18 +81,18 @@ class TestProjectController:
             "Старое название",
             "Старое описание",
             datetime.now(),
-            datetime.now() + timedelta(days=10)
+            datetime.now() + timedelta(days=10),
         )
 
         # Обновляем проект
-        self.controller.update_project(
-            project_id,
-            name="Новое название",
-            description="Новое описание"
+        ok = self.controller.update_project(
+            project_id, name="Новое название", description="Новое описание"
         )
+        assert ok is True
 
         # Проверяем изменения
         project = self.controller.get_project(project_id)
+        assert project is not None
         assert project.name == "Новое название"
         assert project.description == "Новое описание"
 
@@ -86,11 +102,12 @@ class TestProjectController:
             "Проект для удаления",
             "Описание",
             datetime.now(),
-            datetime.now() + timedelta(days=10)
+            datetime.now() + timedelta(days=10),
         )
 
         # Удаляем проект
-        self.controller.delete_project(project_id)
+        ok = self.controller.delete_project(project_id)
+        assert ok is True
 
         # Проверяем, что проект удален
         project = self.controller.get_project(project_id)
@@ -102,14 +119,16 @@ class TestProjectController:
             "Проект для смены статуса",
             "Описание",
             datetime.now(),
-            datetime.now() + timedelta(days=10)
+            datetime.now() + timedelta(days=10),
         )
 
         # Обновляем статус
-        self.controller.update_project_status(project_id, "completed")
+        ok = self.controller.update_project_status(project_id, "completed")
+        assert ok is True
 
         # Проверяем изменения
         project = self.controller.get_project(project_id)
+        assert project is not None
         assert project.status == "completed"
 
     def test_get_project_progress(self):
@@ -118,7 +137,7 @@ class TestProjectController:
             "Проект для прогресса",
             "Описание",
             datetime.now(),
-            datetime.now() + timedelta(days=10)
+            datetime.now() + timedelta(days=10),
         )
 
         # Создаем задачи для проекта
@@ -126,8 +145,22 @@ class TestProjectController:
         user_id = self.db_manager.add_user(User("test", "test@example.com", "developer"))
 
         # Добавляем задачи с разными статусами
-        task_controller.add_task("Задача 1", "Описание", 1, datetime.now() + timedelta(days=1), project_id, user_id)
-        task_controller.add_task("Задача 2", "Описание", 1, datetime.now() + timedelta(days=1), project_id, user_id)
+        task_controller.add_task(
+            "Задача 1",
+            "Описание",
+            1,
+            datetime.now() + timedelta(days=1),
+            project_id,
+            user_id,
+        )
+        task_controller.add_task(
+            "Задача 2",
+            "Описание",
+            1,
+            datetime.now() + timedelta(days=1),
+            project_id,
+            user_id,
+        )
 
         # Помечаем одну задачу как выполненную
         tasks = task_controller.get_tasks_by_project(project_id)
@@ -137,4 +170,3 @@ class TestProjectController:
         progress = self.controller.get_project_progress(project_id)
         assert isinstance(progress, float)
         assert 0 <= progress <= 100
-

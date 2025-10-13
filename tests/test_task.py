@@ -1,16 +1,15 @@
 import pytest
-import sys
 import os
-from datetime import datetime, timedelta
 import tempfile
+from datetime import datetime, timedelta
+
 from database.database_manager import DatabaseManager
-
-# Добавляем путь к модулям проекта
-sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-
 from controllers.task_controller import TaskController
-from controllers.project_controller import ProjectController
-from controllers.user_controller import UserController
+from controllers.project_controller import ProjectController  # не обязателен, но оставим для полноты
+from controllers.user_controller import UserController       # не обязателен, но не мешает
+
+from models.project import Project
+from models.user import User
 
 
 class TestTaskController:
@@ -19,13 +18,18 @@ class TestTaskController:
     def setup_method(self):
         """Настройка перед каждым тестом"""
         self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
+        self.temp_db.close()  # <— это важно для Windows
         self.db_manager = DatabaseManager(self.temp_db.name)
         self.db_manager.create_tables()
-        self.controller = TaskController(self.db_manager)
 
         # Создаем тестовые проекты и пользователей
         self.project_id = self.db_manager.add_project(
-            Project("Тестовый проект", "Описание проекта", datetime.now(), datetime.now() + timedelta(days=30))
+            Project(
+                "Тестовый проект",
+                "Описание проекта",
+                datetime.now(),
+                datetime.now() + timedelta(days=30),
+            )
         )
         self.user_id = self.db_manager.add_user(
             User("test_user", "test@example.com", "developer")
@@ -43,7 +47,7 @@ class TestTaskController:
             1,
             datetime.now() + timedelta(days=7),
             self.project_id,
-            self.user_id
+            self.user_id,
         )
 
         assert task_id is not None
@@ -63,7 +67,7 @@ class TestTaskController:
             2,
             datetime.now() + timedelta(days=5),
             self.project_id,
-            self.user_id
+            self.user_id,
         )
 
         task = self.controller.get_task(task_id)
@@ -74,10 +78,22 @@ class TestTaskController:
     def test_get_all_tasks(self):
         """Тест получения всех задач"""
         # Добавляем несколько задач
-        self.controller.add_task("Задача 1", "Описание 1", 1, datetime.now() + timedelta(days=1), self.project_id,
-                                 self.user_id)
-        self.controller.add_task("Задача 2", "Описание 2", 2, datetime.now() + timedelta(days=2), self.project_id,
-                                 self.user_id)
+        self.controller.add_task(
+            "Задача 1",
+            "Описание 1",
+            1,
+            datetime.now() + timedelta(days=1),
+            self.project_id,
+            self.user_id,
+        )
+        self.controller.add_task(
+            "Задача 2",
+            "Описание 2",
+            2,
+            datetime.now() + timedelta(days=2),
+            self.project_id,
+            self.user_id,
+        )
 
         tasks = self.controller.get_all_tasks()
         assert len(tasks) >= 2
@@ -96,15 +112,12 @@ class TestTaskController:
             1,
             datetime.now() + timedelta(days=3),
             self.project_id,
-            self.user_id
+            self.user_id,
         )
 
         # Обновляем задачу
         self.controller.update_task(
-            task_id,
-            title="Новое название",
-            description="Новое описание",
-            priority=3
+            task_id, title="Новое название", description="Новое описание", priority=3
         )
 
         # Проверяем изменения
@@ -121,7 +134,7 @@ class TestTaskController:
             1,
             datetime.now() + timedelta(days=1),
             self.project_id,
-            self.user_id
+            self.user_id,
         )
 
         # Удаляем задачу
@@ -133,10 +146,22 @@ class TestTaskController:
 
     def test_search_tasks(self):
         """Тест поиска задач"""
-        self.controller.add_task("Важная задача", "Срочное выполнение", 1, datetime.now() + timedelta(days=1),
-                                 self.project_id, self.user_id)
-        self.controller.add_task("Обычная задача", "Плановое выполнение", 2, datetime.now() + timedelta(days=2),
-                                 self.project_id, self.user_id)
+        self.controller.add_task(
+            "Важная задача",
+            "Срочное выполнение",
+            1,
+            datetime.now() + timedelta(days=1),
+            self.project_id,
+            self.user_id,
+        )
+        self.controller.add_task(
+            "Обычная задача",
+            "Плановое выполнение",
+            2,
+            datetime.now() + timedelta(days=2),
+            self.project_id,
+            self.user_id,
+        )
 
         # Поиск по названию
         results = self.controller.search_tasks("Важная")
@@ -154,7 +179,7 @@ class TestTaskController:
             1,
             datetime.now() + timedelta(days=1),
             self.project_id,
-            self.user_id
+            self.user_id,
         )
 
         # Обновляем статус
@@ -172,33 +197,50 @@ class TestTaskController:
     def test_get_overdue_tasks(self):
         """Тест получения просроченных задач"""
         # Создаем просроченную задачу
-        task_id = self.controller.add_task(
+        _ = self.controller.add_task(
             "Просроченная задача",
             "Описание",
             1,
             datetime.now() - timedelta(days=1),  # Вчерашний срок
             self.project_id,
-            self.user_id
+            self.user_id,
         )
 
         overdue_tasks = self.controller.get_overdue_tasks()
         assert len(overdue_tasks) >= 1
 
         for task in overdue_tasks:
-            assert task.is_overdue() == True
+            assert task.is_overdue() is True
 
     def test_get_tasks_by_project(self):
         """Тест получения задач проекта"""
         # Создаем второй проект
         project2_id = self.db_manager.add_project(
-            Project("Второй проект", "Описание", datetime.now(), datetime.now() + timedelta(days=30))
+            Project(
+                "Второй проект",
+                "Описание",
+                datetime.now(),
+                datetime.now() + timedelta(days=30),
+            )
         )
 
         # Добавляем задачи в разные проекты
-        self.controller.add_task("Задача в проекте 1", "Описание", 1, datetime.now() + timedelta(days=1),
-                                 self.project_id, self.user_id)
-        self.controller.add_task("Задача в проекте 2", "Описание", 1, datetime.now() + timedelta(days=1), project2_id,
-                                 self.user_id)
+        self.controller.add_task(
+            "Задача в проекте 1",
+            "Описание",
+            1,
+            datetime.now() + timedelta(days=1),
+            self.project_id,
+            self.user_id,
+        )
+        self.controller.add_task(
+            "Задача в проекте 2",
+            "Описание",
+            1,
+            datetime.now() + timedelta(days=1),
+            project2_id,
+            self.user_id,
+        )
 
         tasks = self.controller.get_tasks_by_project(self.project_id)
         assert len(tasks) >= 1
@@ -209,15 +251,25 @@ class TestTaskController:
     def test_get_tasks_by_user(self):
         """Тест получения задач пользователя"""
         # Создаем второго пользователя
-        user2_id = self.db_manager.add_user(
-            User("user2", "user2@example.com", "developer")
-        )
+        user2_id = self.db_manager.add_user(User("user2", "user2@example.com", "developer"))
 
         # Добавляем задачи разным пользователям
-        self.controller.add_task("Задача пользователя 1", "Описание", 1, datetime.now() + timedelta(days=1),
-                                 self.project_id, self.user_id)
-        self.controller.add_task("Задача пользователя 2", "Описание", 1, datetime.now() + timedelta(days=1),
-                                 self.project_id, user2_id)
+        self.controller.add_task(
+            "Задача пользователя 1",
+            "Описание",
+            1,
+            datetime.now() + timedelta(days=1),
+            self.project_id,
+            self.user_id,
+        )
+        self.controller.add_task(
+            "Задача пользователя 2",
+            "Описание",
+            1,
+            datetime.now() + timedelta(days=1),
+            self.project_id,
+            user2_id,
+        )
 
         tasks = self.controller.get_tasks_by_user(self.user_id)
         assert len(tasks) >= 1
