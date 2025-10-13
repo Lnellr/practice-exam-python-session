@@ -74,11 +74,27 @@ class DatabaseManager:
 
     def get_task_by_id(self, task_id) -> Task | None:
         r = self.conn.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
-        return self._row_to_task(r) if r else None
+        if not r:
+            return None
+        from models.task import Task
+        from datetime import datetime
+        due = datetime.fromisoformat(r["due_date"]) if r["due_date"] else None
+        t = Task(r["title"], r["description"], r["priority"], due, r["project_id"], r["assignee_id"])
+        t.id = r["id"]
+        t.status = r["status"]
+        return t
 
     def get_all_tasks(self) -> list[Task]:
         rows = self.conn.execute("SELECT * FROM tasks ORDER BY id").fetchall()
-        return [self._row_to_task(r) for r in rows]
+        from models.task import Task
+        from datetime import datetime
+        result = []
+        for r in rows:
+            due = datetime.fromisoformat(r["due_date"]) if r["due_date"] else None
+        t = Task(r["title"], r["description"], r["priority"], due, r["project_id"], r["assignee_id"])
+        t.id = r["id"]; t.status = r["status"]
+        result.append(t)
+        return result
 
     def update_task(self, task_id, **kwargs) -> bool:
         if not kwargs:
@@ -102,23 +118,46 @@ class DatabaseManager:
     def search_tasks(self, query) -> list[Task]:
         q = f"%{str(query).strip()}%"
         rows = self.conn.execute(
-            "SELECT * FROM tasks WHERE title LIKE ? OR description LIKE ? ORDER BY id",
-            (q, q),
-        ).fetchall()
-        return [self._row_to_task(r) for r in rows]
+        "SELECT * FROM tasks WHERE title LIKE ? OR description LIKE ? ORDER BY id", (q, q)
+    ).fetchall()
+        from models.task import Task
+        from datetime import datetime
+        out = []
+        for r in rows:
+            due = datetime.fromisoformat(r["due_date"]) if r["due_date"] else None
+            t = Task(r["title"], r["description"], r["priority"], due, r["project_id"], r["assignee_id"])
+            t.id = r["id"]; t.status = r["status"]
+            out.append(t)
+        return out
 
     def get_tasks_by_project(self, project_id) -> list[Task]:
         rows = self.conn.execute(
-            "SELECT * FROM tasks WHERE project_id=? ORDER BY id", (project_id,)
+        "SELECT * FROM tasks WHERE project_id=? ORDER BY id", (project_id,)
         ).fetchall()
-        return [self._row_to_task(r) for r in rows]
+        from models.task import Task
+        from datetime import datetime
+        out = []
+        for r in rows:
+            due = datetime.fromisoformat(r["due_date"]) if r["due_date"] else None
+        t = Task(r["title"], r["description"], r["priority"], due, r["project_id"], r["assignee_id"])
+        t.id = r["id"]; t.status = r["status"]
+        out.append(t)
+        return out
 
 
     def get_tasks_by_user(self, user_id) -> list[Task]:
         rows = self.conn.execute(
-            "SELECT * FROM tasks WHERE assignee_id=? ORDER BY id", (user_id,)
+        "SELECT * FROM tasks WHERE assignee_id=? ORDER BY id", (user_id,)
         ).fetchall()
-        return [self._row_to_task(r) for r in rows]
+        from models.task import Task
+        from datetime import datetime
+        out = []
+        for r in rows:
+            due = datetime.fromisoformat(r["due_date"]) if r["due_date"] else None
+        t = Task(r["title"], r["description"], r["priority"], due, r["project_id"], r["assignee_id"])
+        t.id = r["id"]; t.status = r["status"]
+        out.append(t)
+        return out
 
     def add_project(self, project: Project) -> int:
         cur = self.conn.cursor()
@@ -137,11 +176,27 @@ class DatabaseManager:
 
     def get_project_by_id(self, project_id) -> Project | None:
         r = self.conn.execute("SELECT * FROM projects WHERE id=?", (project_id,)).fetchone()
-        return self._row_to_project(r) if r else None
-
+        if not r:
+            return None
+        from models.project import Project
+        from datetime import datetime
+        start = datetime.fromisoformat(r["start_date"]) if r["start_date"] else None
+        end = datetime.fromisoformat(r["end_date"]) if r["end_date"] else None
+        p = Project(r["name"], r["description"], start, end)
+        p.id = r["id"]; p.status = r["status"]
+        return p
     def get_all_projects(self) -> list[Project]:
         rows = self.conn.execute("SELECT * FROM projects ORDER BY id").fetchall()
-        return [self._row_to_project(r) for r in rows]
+        from models.project import Project
+        from datetime import datetime
+        out = []
+        for r in rows:
+            start = datetime.fromisoformat(r["start_date"]) if r["start_date"] else None
+            end = datetime.fromisoformat(r["end_date"]) if r["end_date"] else None
+            p = Project(r["name"], r["description"], start, end)
+            p.id = r["id"]; p.status = r["status"]
+            out.append(p)
+        return out
 
     def update_project(self, project_id, **kwargs) -> bool:
         if not kwargs:
@@ -173,11 +228,26 @@ class DatabaseManager:
 
     def get_user_by_id(self, user_id) -> User | None:
         r = self.conn.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
-        return self._row_to_user(r) if r else None
+        if not r:
+            return None
+        from models.user import User
+        from datetime import datetime
+        u = User(r["username"], r["email"], r["role"])
+        u.id = r["id"]
+        u.registration_date = datetime.fromisoformat(r["registration_date"])
+        return u
 
     def get_all_users(self) -> list[User]:
         rows = self.conn.execute("SELECT * FROM users ORDER BY id").fetchall()
-        return [self._row_to_user(r) for r in rows]
+        from models.user import User
+        from datetime import datetime
+        out = []
+        for r in rows:
+            u = User(r["username"], r["email"], r["role"])
+        u.id = r["id"]
+        u.registration_date = datetime.fromisoformat(r["registration_date"])
+        out.append(u)
+        return out
 
     def update_user(self, user_id, **kwargs) -> bool:
         if not kwargs:

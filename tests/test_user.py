@@ -16,13 +16,20 @@ class TestUserController:
     def setup_method(self):
         """Настройка перед каждым тестом"""
         self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
-        self.temp_db.close()  # <— это важно для Windows
+        self.temp_db.close()                          # Windows fix
         self.db_manager = DatabaseManager(self.temp_db.name)
         self.db_manager.create_tables()
+        self.controller = UserController(self.db_manager)
 
     def teardown_method(self):
         self.db_manager.close()
-        os.unlink(self.temp_db.name)
+        import time
+        for _ in range(10):                 # маленький retry, пока ОС отпустит lock
+            try:
+                os.unlink(self.temp_db.name)
+                break
+            except PermissionError:
+                time.sleep(0.05)
 
     def test_add_user(self):
         """Тест добавления пользователя"""

@@ -16,28 +16,33 @@ class TestTaskController:
     """Тесты для TaskController"""
 
     def setup_method(self):
-        """Настройка перед каждым тестом"""
         self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
-        self.temp_db.close()  # <— это важно для Windows
+        self.temp_db.close()                          # Windows fix
         self.db_manager = DatabaseManager(self.temp_db.name)
         self.db_manager.create_tables()
+        self.controller = TaskController(self.db_manager)   # <-- ОБЯЗАТЕЛЬНО
 
-        # Создаем тестовые проекты и пользователей
+    # фикстуры для задач (как было раньше)
+        from models.project import Project
+        from models.user import User
+        from datetime import datetime, timedelta
+
         self.project_id = self.db_manager.add_project(
-            Project(
-                "Тестовый проект",
-                "Описание проекта",
-                datetime.now(),
-                datetime.now() + timedelta(days=30),
-            )
-        )
+        Project("Тестовый проект", "Описание проекта", datetime.now(), datetime.now() + timedelta(days=30))
+    )
         self.user_id = self.db_manager.add_user(
-            User("test_user", "test@example.com", "developer")
-        )
+        User("test_user", "test@example.com", "developer")
+    )
 
     def teardown_method(self):
         self.db_manager.close()
-        os.unlink(self.temp_db.name)
+        import time
+        for _ in range(10):                 # маленький retry, пока ОС отпустит lock
+            try:
+                os.unlink(self.temp_db.name)
+                break
+            except PermissionError:
+                time.sleep(0.05)
 
     def test_add_task(self):
         """Тест добавления задачи"""
