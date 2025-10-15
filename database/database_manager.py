@@ -16,37 +16,36 @@ class DatabaseManager:
     def create_tables(self) -> None:
         cur = self.conn.cursor()
         cur.execute("""
-        CREATE TABLE IF NOT EXISTS users(
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT NOT NULL,
-            email TEXT NOT NULL,
-            role TEXT NOT NULL,
-            registration_date TEXT NOT NULL
-        );
-        """)
-        cur.execute("""
-        CREATE TABLE IF NOT EXISTS projects(
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            description TEXT,
-            start_date TEXT,
-            end_date TEXT,
-            status TEXT NOT NULL
-        );
-        """)
-        cur.execute("""
-        CREATE TABLE IF NOT EXISTS tasks(
+        CREATE TABLE IF NOT EXISTS tasks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT NOT NULL,
             description TEXT,
             priority INTEGER NOT NULL,
             status TEXT NOT NULL,
             due_date TEXT,
-            project_id INTEGER,
-            assignee_id INTEGER,
-            FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE SET NULL,
-            FOREIGN KEY(assignee_id) REFERENCES users(id) ON DELETE SET NULL
-        );
+            project_id INTEGER NOT NULL,
+            assignee_id INTEGER NOT NULL
+            -- внешние ключи по желанию
+);
+        """)
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS projects (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT,
+            start_date TEXT,
+            end_date TEXT,
+            status TEXT NOT NULL
+);
+        """)
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            email TEXT NOT NULL,
+            role TEXT NOT NULL,
+            registration_date TEXT NOT NULL
+);
         """)
         cur.execute("CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id);")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_tasks_status  ON tasks(status);")
@@ -54,20 +53,19 @@ class DatabaseManager:
         self.conn.commit()
 
     def add_task(self, task: Task) -> int:
-        cur = self.conn.cursor()
-        cur.execute(
-            """INSERT INTO tasks(title, description, priority, status, due_date, project_id, assignee_id)
-               VALUES(?,?,?,?,?,?,?)""",
-            (
-                task.title,
-                task.description,
-                task.priority,
-                task.status,
-                task.due_date.isoformat() if task.due_date else None,
-                task.project_id,
-                task.assignee_id,
-            ),
-        )
+        cur = self.conn.execute(
+        "INSERT INTO tasks (title, description, priority, status, due_date, project_id, assignee_id) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (
+            task.title,
+            task.description,
+            int(task.priority),
+            task.status,
+            task.due_date.isoformat() if task.due_date else None,
+            int(task.project_id),
+            int(task.assignee_id),
+        ),
+    )
         self.conn.commit()
         return cur.lastrowid
 
@@ -85,16 +83,21 @@ class DatabaseManager:
         return t
 
     def get_all_tasks(self) -> list[Task]:
-        rows = self.conn.execute("SELECT * FROM tasks ORDER BY id").fetchall()
+        rows = self.conn.execute(
+            "SELECT id, title, description, priority, status, due_date, project_id, assignee_id "
+            "FROM tasks ORDER BY id"
+        ).fetchall()
         from models.task import Task
         from datetime import datetime
-        result = []
+
+        out: list[Task] = []
         for r in rows:
             due = datetime.fromisoformat(r["due_date"]) if r["due_date"] else None
-        t = Task(r["title"], r["description"], r["priority"], due, r["project_id"], r["assignee_id"])
-        t.id = r["id"]; t.status = r["status"]
-        result.append(t)
-        return result
+            t = Task(r["title"], r["description"], r["priority"], due, r["project_id"], r["assignee_id"])
+            t.id = r["id"]
+            t.status = r["status"]
+            out.append(t)
+        return out
 
     def update_task(self, task_id, **kwargs) -> bool:
         if not kwargs:
@@ -147,16 +150,18 @@ class DatabaseManager:
 
     def get_tasks_by_user(self, user_id) -> list[Task]:
         rows = self.conn.execute(
-        "SELECT * FROM tasks WHERE assignee_id=? ORDER BY id", (user_id,)
+            "SELECT id, title, description, priority, status, due_date, project_id, assignee_id "
+            "FROM tasks WHERE assignee_id=? ORDER BY id",
+        (user_id,),
         ).fetchall()
         from models.task import Task
         from datetime import datetime
         out = []
         for r in rows:
             due = datetime.fromisoformat(r["due_date"]) if r["due_date"] else None
-        t = Task(r["title"], r["description"], r["priority"], due, r["project_id"], r["assignee_id"])
-        t.id = r["id"]; t.status = r["status"]
-        out.append(t)
+            t = Task(r["title"], r["description"], r["priority"], due, r["project_id"], r["assignee_id"])
+            t.id = r["id"]; t.status = r["status"]
+            out.append(t)
         return out
 
     def add_project(self, project: Project) -> int:
@@ -218,11 +223,11 @@ class DatabaseManager:
         return True
 
     def add_user(self, user: User) -> int:
-        cur = self.conn.cursor()
-        cur.execute(
-            "INSERT INTO users(username, email, role, registration_date) VALUES(?,?,?,?)",
-            (user.username, user.email, user.role, user.registration_date.isoformat()),
-        )
+        cur = self.conn.execute(
+        "INSERT INTO users (username, email, role, registration_date) "
+        "VALUES (?, ?, ?, ?)",
+        (user.username, user.email, user.role, user.registration_date.isoformat()),
+    )
         self.conn.commit()
         return cur.lastrowid
 
@@ -238,15 +243,18 @@ class DatabaseManager:
         return u
 
     def get_all_users(self) -> list[User]:
-        rows = self.conn.execute("SELECT * FROM users ORDER BY id").fetchall()
+        rows = self.conn.execute(
+            "SELECT id, username, email, role, registration_date FROM users ORDER BY id"
+        ).fetchall()
         from models.user import User
         from datetime import datetime
-        out = []
+
+        out: list[User] = []
         for r in rows:
             u = User(r["username"], r["email"], r["role"])
-        u.id = r["id"]
-        u.registration_date = datetime.fromisoformat(r["registration_date"])
-        out.append(u)
+            u.id = r["id"]
+            u.registration_date = datetime.fromisoformat(r["registration_date"])
+            out.append(u)
         return out
 
     def update_user(self, user_id, **kwargs) -> bool:
