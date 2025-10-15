@@ -273,4 +273,4 @@ class DatabaseManager:
         self.conn.execute("DELETE FROM users WHERE id=?", (user_id,))
         self.conn.commit()
         return True
-    #ggjri
+    #ggjrig
